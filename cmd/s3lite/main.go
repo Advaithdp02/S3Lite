@@ -14,7 +14,21 @@ func main(){
 
 	store:=storage.New("storage")
 
-	fmt.Println(store)
+	command:=os.Args[1]
+
+	switch command{
+	case "Upload":
+		err:=store.Upload(os.Args[2])
+		if(err!=nil){
+			fmt.Printf("Upload failed :%v",err)
+			return 
+		}
+		fmt.Println("Upload done successfully")
+	default:
+		fmt.Println("Unknown command")
+	}
+	
+
 
 	
 }
