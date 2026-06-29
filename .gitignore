@@ -18,6 +18,10 @@ go.work.sum
 # Storage output
 /storage/
 
+# Test media
+*.mov
+*.mp4
+
 # IDE
 .idea/
 .vscode/
