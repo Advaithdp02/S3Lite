@@ -5,11 +5,13 @@ package storage
 type Storage struct{
 	Root string
 	ChunkSize int
+	Nodes []Node
 }
 //New is a constructer
 func New(root string,chunksize int) *Storage{
 	return &Storage{
 		Root: root,
 		ChunkSize: chunksize,
+		Nodes: DefaultNodes(root),
 	}
 }

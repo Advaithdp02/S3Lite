@@ -1,4 +1,5 @@
 package storage
+
 import (
 	"bytes"
 	"fmt"
@@ -6,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 )
+
 func (s *Storage) Download(filename, destination string) error {
 
 	metadata, err := s.LoadMetadata(filename)
@@ -21,34 +23,34 @@ func (s *Storage) Download(filename, destination string) error {
 	}
 	defer outputFile.Close()
 
-
 	for _, chunk := range metadata.Chunks {
 
-	chunkPath := filepath.Join(
-		s.Root,
-		"chunks",
-		chunk.ID,
-	)
-
-	data, err := os.ReadFile(chunkPath)
-	if err != nil {
-		return err
-	}
-
-	checksum := CalculateChecksum(data)
-
-	if checksum != chunk.Checksum {
-		return fmt.Errorf(
-			"checksum mismatch for chunk %s",
+		chunkPath := filepath.Join(
+			s.Root,
+			chunk.Node,
+			"chunks",
 			chunk.ID,
 		)
-	}
 
-	_, err = io.Copy(outputFile, bytes.NewReader(data))
-	if err != nil {
-		return err
+		data, err := os.ReadFile(chunkPath)
+		if err != nil {
+			return err
+		}
+
+		checksum := CalculateChecksum(data)
+
+		if checksum != chunk.Checksum {
+			return fmt.Errorf(
+				"checksum mismatch for chunk %s",
+				chunk.ID,
+			)
+		}
+
+		_, err = io.Copy(outputFile, bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
 	}
-}
 
 	return nil
 }

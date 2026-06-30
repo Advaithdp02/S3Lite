@@ -1,11 +1,11 @@
 package storage
 
-
 type ChunkMetadata struct {
-	ID    string `json:"id"`
-	Index int    `json:"index"`
-	Size  int64  `json:"size"`
+	ID       string `json:"id"`
+	Index    int    `json:"index"`
+	Size     int64  `json:"size"`
 	Checksum string `json:"checksum"`
+	Node     string `json:"node"`
 }
 
 type Metadata struct {

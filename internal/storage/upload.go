@@ -10,9 +10,7 @@ import (
 
 func (s *Storage) Upload(path string) error {
 
-	chunksDir := filepath.Join(s.Root, "chunks")
-
-	if err := os.MkdirAll(chunksDir, os.ModePerm); err != nil {
+	if err := s.InitializeNodes(); err != nil {
 		return err
 	}
 
@@ -39,6 +37,7 @@ func (s *Storage) Upload(path string) error {
 	buffer := make([]byte, s.ChunkSize)
 
 	index := 0
+	nodeIndex := 0
 
 	for {
 
@@ -52,9 +51,14 @@ func (s *Storage) Upload(path string) error {
 			break
 		}
 
+		node := s.Nodes[nodeIndex]
+
 		chunkID := uuid.NewString() + ".chunk"
 
-		chunkPath := filepath.Join(chunksDir, chunkID)
+		chunkPath := filepath.Join(
+			node.Path,
+			chunkID,
+		)
 
 		chunkFile, err := os.Create(chunkPath)
 		if err != nil {
@@ -69,14 +73,18 @@ func (s *Storage) Upload(path string) error {
 		}
 
 		checksum := CalculateChecksum(buffer[:bytesRead])
+
 		metadata.Chunks = append(metadata.Chunks, ChunkMetadata{
-			ID:    chunkID,
-			Index: index,
-			Size:  int64(bytesRead),
+			ID:       chunkID,
+			Index:    index,
+			Size:     int64(bytesRead),
 			Checksum: checksum,
+			Node:     node.Name,
 		})
 
 		index++
+
+		nodeIndex = (nodeIndex + 1) % len(s.Nodes)
 	}
 
 	return s.SaveMetadata(metadata)

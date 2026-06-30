@@ -7,20 +7,21 @@ import (
 
 func (s *Storage) Delete(filename string) error {
 
-	meta, err := s.LoadMetadata(filename)
+	metadata, err := s.LoadMetadata(filename)
 	if err != nil {
 		return err
 	}
 
-	for _, chunk := range meta.Chunks {
+	for _, chunk := range metadata.Chunks {
 
 		chunkPath := filepath.Join(
 			s.Root,
+			chunk.Node,
 			"chunks",
 			chunk.ID,
 		)
 
-		if err := os.Remove(chunkPath); err != nil {
+		if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -31,5 +32,9 @@ func (s *Storage) Delete(filename string) error {
 		filename+".json",
 	)
 
-	return os.Remove(metadataPath)
+	if err := os.Remove(metadataPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
 }
