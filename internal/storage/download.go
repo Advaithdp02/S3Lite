@@ -1,9 +1,7 @@
 package storage
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -25,28 +23,40 @@ func (s *Storage) Download(filename, destination string) error {
 
 	for _, chunk := range metadata.Chunks {
 
-		chunkPath := filepath.Join(
-			s.Root,
-			chunk.Node,
-			"chunks",
-			chunk.ID,
-		)
+		var data []byte
+		var found bool
 
-		data, err := os.ReadFile(chunkPath)
-		if err != nil {
-			return err
+		for _, replica := range chunk.Replicas {
+
+			chunkPath := filepath.Join(
+				s.Root,
+				replica,
+				"chunks",
+				chunk.ID,
+			)
+
+			bytes, err := os.ReadFile(chunkPath)
+			if err != nil {
+				continue
+			}
+
+			if CalculateChecksum(bytes) != chunk.Checksum {
+				continue
+			}
+
+			data = bytes
+			found = true
+			break
 		}
 
-		checksum := CalculateChecksum(data)
-
-		if checksum != chunk.Checksum {
+		if !found {
 			return fmt.Errorf(
-				"checksum mismatch for chunk %s",
+				"no healthy replica found for chunk %s",
 				chunk.ID,
 			)
 		}
 
-		_, err = io.Copy(outputFile, bytes.NewReader(data))
+		_, err := outputFile.Write(data)
 		if err != nil {
 			return err
 		}

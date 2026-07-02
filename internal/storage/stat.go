@@ -26,10 +26,10 @@ func (s *Storage) Stat(filename string) error {
 
 		fmt.Printf("Chunk %d\n", chunk.Index)
 		fmt.Println("----------------------------------------")
-		fmt.Println("Node      :", chunk.Node)
 		fmt.Println("Chunk ID  :", chunk.ID)
 		fmt.Println("Size      :", chunk.Size, "bytes")
 		fmt.Println("Checksum  :", chunk.Checksum)
+		fmt.Println("Replicas  :",chunk.Replicas)
 		fmt.Println()
 	}
 

@@ -9,7 +9,6 @@ import (
 )
 
 func (s *Storage) Upload(path string) error {
-
 	if err := s.InitializeNodes(); err != nil {
 		return err
 	}
@@ -51,35 +50,34 @@ func (s *Storage) Upload(path string) error {
 			break
 		}
 
-		node := s.Nodes[nodeIndex]
 
 		chunkID := uuid.NewString() + ".chunk"
 
-		chunkPath := filepath.Join(
-			node.Path,
+		data := make([]byte, bytesRead)
+		copy(data, buffer[:bytesRead])
+
+		replicas, err := s.ReplicateChunk(
 			chunkID,
+			data,
+			nodeIndex,
 		)
-
-		chunkFile, err := os.Create(chunkPath)
 		if err != nil {
 			return err
 		}
 
-		_, err = chunkFile.Write(buffer[:bytesRead])
-		chunkFile.Close()
 
 		if err != nil {
 			return err
 		}
 
-		checksum := CalculateChecksum(buffer[:bytesRead])
+		checksum := CalculateChecksum(data)
 
 		metadata.Chunks = append(metadata.Chunks, ChunkMetadata{
 			ID:       chunkID,
 			Index:    index,
 			Size:     int64(bytesRead),
 			Checksum: checksum,
-			Node:     node.Name,
+			Replicas: replicas,
 		})
 
 		index++
