@@ -2,11 +2,17 @@ package storage
 
 import (
 	"os"
-	"path/filepath")
+	"path/filepath"
+	"sync"
+	"time"
+)
 
 type Node struct {
 	Name string
 	Path string
+	Alive bool
+	LastHeartbeat time.Time
+	mu sync.RWMutex
 }
 
 func DefaultNodes(root string) []Node {
@@ -25,10 +31,9 @@ func DefaultNodes(root string) []Node {
 		},
 	}
 }
-
 func (s *Storage) InitializeNodes() error {
-
-	for _, node := range s.Nodes {
+	for i := range s.Nodes {
+		node := &s.Nodes[i]
 
 		if err := os.MkdirAll(node.Path, os.ModePerm); err != nil {
 			return err

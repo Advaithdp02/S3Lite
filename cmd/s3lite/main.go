@@ -58,6 +58,7 @@ func main() {
 		}
 
 		fmt.Println("Download completed successfully.")
+		
 
 	case "list":
 		if err := store.List(); err != nil {
