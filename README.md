@@ -26,27 +26,31 @@ go build -o s3lite ./cmd/s3lite
 
 ## Architecture
 
+Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the recovery process re-replicates its chunks onto remaining healthy nodes to maintain the replication factor.
+
 ```
                     ┌──────────────┐
                     │  metadata/   │
                     │  *.json      │
                     └──────┬───────┘
                            │
-┌──────────┐    upload/download/delete    ┌──────────┐
-│  s3lite  │ ◄──────────────────────────► │ Storage  │
-│   CLI    │                              +──────────┤
-└──────────┘                              │ Root     │
-                                          │ ChunkSize│
-                                          │ Replica  │
-                                          │ Nodes[]  │
-                                          └────┬─────┘
-                                               │
-                    ┌──────────────────────────┼──────────┐
-                    │                          │          │
-              ┌─────▼─────┐            ┌──────▼─────┐ ┌───▼──────┐
-              │  node1/   │            │   node2/   │ │  node3/  │
-              │  chunks/  │            │   chunks/  │ │  chunks/ │
-              └───────────┘            └────────────┘ └──────────┘
+┌──────────┐    upload/download/delete    ┌──────────────┐
+│  s3lite  │ ◄──────────────────────────► │   Storage    │
+│   CLI    │                              +──────────────┤
+└──────────┘                              │ Root         │
+                                          │ ChunkSize    │
+                                          │ Replica      │
+                                          │ Nodes[]      │
+                                          │ Heartbeat ◄──┤── goroutine (every 2s)
+                                          │ Recovery  ◄──┤── goroutine
+                                          └──────┬───────┘
+                                                  │
+                    ┌─────────────────────────────┼──────────┐
+                    │                             │          │
+              ┌─────▼──────┐              ┌──────▼──────┐ ┌──▼───────┐
+              │  node1/    │              │   node2/    │ │  node3/  │
+              │  chunks/   │              │   chunks/   │ │  chunks/ │
+              └────────────┘              └─────────────┘ └──────────┘
 ```
 
 ### Data flow
@@ -57,6 +61,8 @@ go build -o s3lite ./cmd/s3lite
 
 **Delete:** load manifest → remove all replica chunks → remove manifest. Missing chunks are silently tolerated.
 
+**Recovery:** background goroutine scans all manifests → for each chunk, checks if enough healthy replicas exist → re-replicates onto alive nodes that don't have it yet.
+
 ## Configuration
 
 Hardcoded at the moment (see `cmd/s3lite/main.go`):
@@ -64,6 +70,7 @@ Hardcoded at the moment (see `cmd/s3lite/main.go`):
 - **Root:** `storage/` (created at runtime)
 - **Chunk size:** 1 MiB
 - **Replication factor:** 2
+- **Heartbeat interval:** 2 seconds
 - **Nodes:** `node1`, `node2`, `node3` under root
 
 ## Storage layout
