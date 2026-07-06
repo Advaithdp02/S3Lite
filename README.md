@@ -1,8 +1,10 @@
 # s3lite
 
-A minimal local object storage that chunks files, replicates chunks across storage nodes, and tracks metadata via JSON manifests. No daemon, no network — pure filesystem CLI tool.
+A minimal local object storage that chunks files, replicates chunks across storage nodes, tracks metadata via JSON manifests, and exposes operations via an HTTP API.
 
 ## Quick Start
+
+### CLI
 
 ```bash
 go build -o s3lite ./cmd/s3lite
@@ -14,7 +16,18 @@ go build -o s3lite ./cmd/s3lite
 ./s3lite delete myfile.txt
 ```
 
-## Commands
+### Metadata Server
+
+```bash
+go build -o metadata-server ./cmd/metadata
+
+./metadata-server
+# Listening on :8080
+```
+
+## Commands / API
+
+### CLI
 
 | Command | Args | Description |
 |---------|------|-------------|
@@ -23,6 +36,19 @@ go build -o s3lite ./cmd/s3lite
 | `list` | — | Lists all stored objects |
 | `stat <file>` | object name | Shows object metadata and per-chunk details |
 | `delete <file>` | object name | Removes all chunk replicas and metadata |
+
+### HTTP Endpoints
+
+The metadata server (`cmd/metadata`) exposes the same operations over HTTP on port `8080`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `POST /upload` | Upload a file |
+| `GET /download` | Download a file |
+| `GET /list` | List stored objects |
+| `GET /stat` | Show object metadata |
+| `DELETE /delete` | Delete an object |
 
 ## Architecture
 
@@ -34,23 +60,23 @@ Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the
                     │  *.json      │
                     └──────┬───────┘
                            │
-┌──────────┐    upload/download/delete    ┌──────────────┐
-│  s3lite  │ ◄──────────────────────────► │   Storage    │
-│   CLI    │                              +──────────────┤
-└──────────┘                              │ Root         │
-                                          │ ChunkSize    │
-                                          │ Replica      │
-                                          │ Nodes[]      │
-                                          │ Heartbeat ◄──┤── goroutine (every 2s)
-                                          │ Recovery  ◄──┤── goroutine
-                                          └──────┬───────┘
-                                                  │
-                    ┌─────────────────────────────┼──────────┐
-                    │                             │          │
-              ┌─────▼──────┐              ┌──────▼──────┐ ┌──▼───────┐
-              │  node1/    │              │   node2/    │ │  node3/  │
-              │  chunks/   │              │   chunks/   │ │  chunks/ │
-              └────────────┘              └─────────────┘ └──────────┘
+┌──────────┐   CLI / HTTP    ┌──────────────┐
+│  s3lite  │ ◄────────────► │   Storage    │
+│  CLI /   │                +──────────────┤
+│  Server  │                │ Root         │
+└──────────┘                │ ChunkSize    │
+                             │ Replica      │
+                             │ Nodes[]      │
+                             │ Heartbeat ◄──┤── goroutine (every 2s)
+                             │ Recovery  ◄──┤── goroutine
+                             └──────┬───────┘
+                                     │
+                     ┌───────────────┼──────────┐
+                     │               │          │
+               ┌─────▼──────┐ ┌─────▼──────┐ ┌──▼───────┐
+               │  node1/    │ │  node2/    │ │  node3/  │
+               │  chunks/   │ │  chunks/   │ │  chunks/ │
+               └────────────┘ └────────────┘ └──────────┘
 ```
 
 ### Data flow
@@ -65,13 +91,15 @@ Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the
 
 ## Configuration
 
-Hardcoded at the moment (see `cmd/s3lite/main.go`):
+Hardcoded at the moment (see `cmd/s3lite/main.go` and `cmd/metadata/main.go`):
 
 - **Root:** `storage/` (created at runtime)
 - **Chunk size:** 1 MiB
 - **Replication factor:** 2
 - **Heartbeat interval:** 2 seconds
+- **Recovery interval:** 5 seconds
 - **Nodes:** `node1`, `node2`, `node3` under root
+- **Metadata server port:** `:8080`
 
 ## Storage layout
 
