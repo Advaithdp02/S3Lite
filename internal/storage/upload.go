@@ -66,9 +66,6 @@ func (s *Storage) Upload(path string) error {
 		}
 
 
-		if err != nil {
-			return err
-		}
 
 		checksum := CalculateChecksum(data)
 

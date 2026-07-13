@@ -58,23 +58,53 @@ func main() {
 		}
 
 		fmt.Println("Download completed successfully.")
-		
 
 	case "list":
-		if err := store.List(); err != nil {
+		objects, err := store.List()
+		if err != nil {
 			fmt.Println("List failed:", err)
-		}
-
-	case "stat":
-		if len(os.Args) != 3 {
-			fmt.Println("Usage: stat <file>")
 			return
 		}
 
-		if err := store.Stat(os.Args[2]); err != nil {
+		fmt.Printf("%-20s %-12s %-10s\n", "NAME", "SIZE", "CHUNKS")
+
+		for _, obj := range objects {
+			fmt.Printf(
+				"%-20s %-12d %-10d\n",
+				obj.Name,
+				obj.Size,
+				obj.Chunks,
+			)
+		}
+	case "stat":
+		meta, err := store.Stat(os.Args[2])
+		if err != nil {
 			fmt.Println("Stat failed:", err)
+			return
 		}
 
+		fmt.Println("========================================")
+		fmt.Println("Object Information")
+		fmt.Println("========================================")
+		fmt.Println("Name       :", meta.Name)
+		fmt.Println("Size       :", meta.Size, "bytes")
+		fmt.Println("Chunk Size :", meta.ChunkSize, "bytes")
+		fmt.Println("Chunks     :", len(meta.Chunks))
+		fmt.Println()
+
+		fmt.Println("========================================")
+		fmt.Println("Chunk Details")
+		fmt.Println("========================================")
+
+		for _, chunk := range meta.Chunks {
+			fmt.Printf("Chunk %d\n", chunk.Index)
+			fmt.Println("----------------------------------------")
+			fmt.Println("Chunk ID  :", chunk.ID)
+			fmt.Println("Size      :", chunk.Size, "bytes")
+			fmt.Println("Checksum  :", chunk.Checksum)
+			fmt.Println("Replicas  :", chunk.Replicas)
+			fmt.Println()
+		}
 	case "delete":
 		if len(os.Args) != 3 {
 			fmt.Println("Usage: delete <file>")
