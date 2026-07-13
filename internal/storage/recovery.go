@@ -110,6 +110,10 @@ func (s *Storage) RecoverChunk(chunk *ChunkMetadata) (bool, error) {
 		return false, nil
 	}
 
+	if sourceData == nil {
+		return false, fmt.Errorf("no healthy source data for chunk %s, cannot recover", chunk.ID)
+	}
+
 	for i := range s.Nodes {
 
 		node := &s.Nodes[i]

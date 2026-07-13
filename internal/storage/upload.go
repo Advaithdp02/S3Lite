@@ -9,10 +9,6 @@ import (
 )
 
 func (s *Storage) Upload(path string) error {
-	if err := s.InitializeNodes(); err != nil {
-		return err
-	}
-
 	sourceFile, err := os.Open(path)
 	if err != nil {
 		return err

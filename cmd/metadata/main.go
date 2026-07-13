@@ -15,9 +15,8 @@ const (
 	ChunkSize   = 1024 * 1024
 )
 func main() {
-	s := storage.New(StorageRoot, ChunkSize)
+	s := storage.New(StorageRoot, ChunkSize, 2)
 
-	s.StartHeartBeat(2 * time.Second)
 	s.StartRecovery(5 * time.Second)
 
 	log.Println("Metadata Server started")
@@ -27,11 +26,16 @@ func main() {
 	http.HandleFunc("/list",     metadata.ListHandler(s))
 	http.HandleFunc("/stat",     metadata.StatHandler(s))
 	http.HandleFunc("/delete",   metadata.DeleteHandler(s))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	errCh := make(chan error, 1)
+	go func() { errCh <- http.ListenAndServe(":8080", nil) }()
 
-	<-sig
-
-	log.Println("Shutting down Metadata Server...")
+	select {
+	case <-sig:
+		log.Println("Shutting down Metadata Server...")
+	case err := <-errCh:
+		log.Fatal(err)
+	}
 }

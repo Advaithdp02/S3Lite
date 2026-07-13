@@ -7,23 +7,38 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Advaithdp02/s3lite/internal/storage"
 )
 
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
 func UploadHandler(store *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		file, header, err := r.FormFile("file")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer file.Close()
+
+		filename := filepath.Base(header.Filename)
+		if filename == "." || filename == "/" {
+			http.Error(w, "invalid filename", http.StatusBadRequest)
+			return
+		}
 
 		tmp, err := os.CreateTemp("", "upload-*")
 		if err != nil {
@@ -32,11 +47,17 @@ func UploadHandler(store *storage.Storage) http.HandlerFunc {
 		}
 		defer os.Remove(tmp.Name())
 
-		io.Copy(tmp, file)
+		if _, err := io.Copy(tmp, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		tmp.Close()
 
-		finalPath := filepath.Join(filepath.Dir(tmp.Name()), header.Filename)
-		os.Rename(tmp.Name(), finalPath)
+		finalPath := filepath.Join(filepath.Dir(tmp.Name()), filename)
+		if err := os.Rename(tmp.Name(), finalPath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer os.Remove(finalPath)
 
 		if err := store.Upload(finalPath); err != nil {
@@ -50,6 +71,10 @@ func UploadHandler(store *storage.Storage) http.HandlerFunc {
 
 func DownloadHandler(store *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		filename := r.URL.Query().Get("file")
 		if filename == "" {
 			http.Error(w, "missing file", http.StatusBadRequest)
@@ -61,7 +86,10 @@ func DownloadHandler(store *storage.Storage) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer os.RemoveAll(tmpDir)
+		go func() {
+			time.Sleep(5 * time.Second)
+			os.RemoveAll(tmpDir)
+		}()
 
 		if err := store.Download(filename, tmpDir); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,6 +105,10 @@ func DownloadHandler(store *storage.Storage) http.HandlerFunc {
 
 func ListHandler(store *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		objects, err := store.List()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -94,6 +126,10 @@ func ListHandler(store *storage.Storage) http.HandlerFunc {
 
 func StatHandler(store *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		filename := r.URL.Query().Get("file")
 		if filename == "" {
 			http.Error(w, "missing file parameter", http.StatusBadRequest)
@@ -108,12 +144,15 @@ func StatHandler(store *storage.Storage) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(meta)
-		w.Write([]byte("Stat endpoint"))
 	}
 }
 
 func DeleteHandler(store *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		filename := r.URL.Query().Get("file")
 		if filename == "" {
 			http.Error(w, "missing file parameter", http.StatusBadRequest)

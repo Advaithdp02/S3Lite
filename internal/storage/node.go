@@ -35,10 +35,10 @@ func (s *Storage) InitializeNodes() error {
 	for i := range s.Nodes {
 		node := &s.Nodes[i]
 
-		if err := os.MkdirAll(node.Path, os.ModePerm); err != nil {
+		if err := os.MkdirAll(node.Path, 0755); err != nil {
 			return err
 		}
 	}
 
-	return os.MkdirAll(filepath.Join(s.Root, "metadata"), os.ModePerm)
+	return os.MkdirAll(filepath.Join(s.Root, "metadata"), 0755)
 }

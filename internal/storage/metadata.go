@@ -7,10 +7,12 @@ import (
 )
 
 func (s *Storage) SaveMetadata(metadata *Metadata) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	metadataDir := filepath.Join(s.Root, "metadata")
 
-	if err := os.MkdirAll(metadataDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(metadataDir, 0755); err != nil {
 		return err
 	}
 
@@ -29,6 +31,8 @@ func (s *Storage) SaveMetadata(metadata *Metadata) error {
 }
 
 func (s *Storage) LoadMetadata(filename string) (*Metadata, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	path := filepath.Join(
 		s.Root,

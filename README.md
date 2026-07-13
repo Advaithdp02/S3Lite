@@ -50,6 +50,8 @@ The metadata server (`cmd/metadata`) exposes the same operations over HTTP on po
 | `GET /stat` | Show object metadata |
 | `DELETE /delete` | Delete an object |
 
+Endpoints require specific HTTP methods: `GET` for read operations (download, list, stat, health), `POST` for upload, `DELETE` for delete. Requests with incorrect methods return 405.
+
 ## Architecture
 
 Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the recovery process re-replicates its chunks onto remaining healthy nodes to maintain the replication factor.
@@ -65,7 +67,7 @@ Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the
 │  CLI /   │                +──────────────┤
 │  Server  │                │ Root         │
 └──────────┘                │ ChunkSize    │
-                             │ Replica      │
+                             │ ReplicationFactor │
                              │ Nodes[]      │
                              │ Heartbeat ◄──┤── goroutine (every 2s)
                              │ Recovery  ◄──┤── goroutine
@@ -85,7 +87,7 @@ Nodes are monitored via a periodic heartbeat goroutine. If a node goes down, the
 
 **Download:** load manifest → try replicas in order → verify SHA-256 → first healthy replica wins → write reconstructed file.
 
-**Delete:** load manifest → remove all replica chunks → remove manifest. Missing chunks are silently tolerated.
+**Delete:** load manifest → remove all replica chunks → remove manifest. Chunks that fail to delete return errors (e.g. if the chunk file is missing or a node is unreachable).
 
 **Recovery:** background goroutine scans all manifests → for each chunk, checks if enough healthy replicas exist → re-replicates onto alive nodes that don't have it yet.
 

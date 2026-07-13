@@ -29,7 +29,7 @@ func main() {
 		return
 	}
 
-	store := storage.New(StorageRoot, ChunkSize)
+	store := storage.New(StorageRoot, ChunkSize, 2)
 
 	switch os.Args[1] {
 
@@ -77,6 +77,10 @@ func main() {
 			)
 		}
 	case "stat":
+		if len(os.Args) != 3 {
+			fmt.Println("Usage: stat <file>")
+			return
+		}
 		meta, err := store.Stat(os.Args[2])
 		if err != nil {
 			fmt.Println("Stat failed:", err)
